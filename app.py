@@ -2,8 +2,8 @@ import streamlit as st
 import requests
 import time
 
-st.set_page_config(page_title="YouTube to PC", page_icon="🚀")
-st.title("🚀 הורדה חכמה ומסונכרנת")
+st.set_page_config(page_title="YouTube to PC", page_icon="🎵")
+st.title("🎵 הורדה חכמה ומסונכרנת")
 
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN")
 GITHUB_USER = st.secrets.get("GITHUB_USER")
