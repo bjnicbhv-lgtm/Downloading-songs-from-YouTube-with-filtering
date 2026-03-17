@@ -1,43 +1,47 @@
 import streamlit as st
 import yt_dlp
 import os
+import tempfile
 
-st.set_page_config(page_title="מוריד שירים", layout="centered")
+st.title("🎵 מוריד שירים - גרסה עוקפת חסימות")
 
-st.title("🎵 מוריד שירים וסרטונים")
-st.write("הכנס קישור, בחר פורמט והורד בקלות.")
+# שליפת העוגיות מה-Secrets של Streamlit
+YT_COOKIES = st.secrets.get("youtube_cookies")
 
-# תיבת הזנת קישור
-url = st.text_input("הכנס קישור (YouTube וכדומה):", placeholder="https://www.youtube.com/watch?v=...")
+url = st.text_input("הכנס קישור:")
+format_choice = st.radio("בחר פורמט:", ("MP3", "MP4"))
 
-# בחירת פורמט
-format_choice = st.radio("בחר פורמט הורדה:", ("MP3 (אודיו בלבד)", "MP4 (וידאו)"))
-
-if st.button("הכן קובץ להורדה"):
-    if url:
-        with st.spinner('מעבד את הבקשה...'):
+if st.button("הורד"):
+    if url and YT_COOKIES:
+        with st.spinner('מתחבר ליוטיוב...'):
             try:
-                # הגדרות עבור yt-dlp
+                # יצירת קובץ זמני לעוגיות
+                with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as tfile:
+                    tfile.write(YT_COOKIES)
+                    cookie_path = tfile.name
+
+                # הגדרות מתקדמות לעקיפת חסימות
                 ydl_opts = {
-                    'format': 'bestaudio/best' if "MP3" in format_choice else 'bestvideo+bestaudio/best',
+                    'format': 'bestaudio/best' if format_choice == "MP3" else 'best',
+                    'cookiefile': cookie_path,
+                    'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'nocheckcertificate': True,
+                    'quiet': True,
+                    'no_warnings': True,
                     'outtmpl': 'downloaded_file.%(ext)s',
                 }
-                
+
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
                     filename = ydl.prepare_filename(info)
+
+                with open(filename, "rb") as f:
+                    st.download_button("לחץ להורדה סופית", f, file_name=filename)
                 
-                # כפתור הורדה בפועל למחשב המשתמש
-                with open(filename, "rb") as file:
-                    st.download_button(
-                        label="לחץ כאן להורדת הקובץ",
-                        data=file,
-                        file_name=filename,
-                        mime="audio/mpeg" if "MP3" in format_choice else "video/mp4"
-                    )
-                st.success("הקובץ מוכן!")
+                # ניקוי הקובץ הזמני
+                os.unlink(cookie_path)
                 
             except Exception as e:
-                st.error(f"אירעה שגיאה: {e}")
+                st.error(f"שגיאה: {e}")
     else:
-        st.warning("נא להזין קישור תקין.")
+        st.error("חסר קישור או שלא הוגדרו עוגיות ב-Secrets")
