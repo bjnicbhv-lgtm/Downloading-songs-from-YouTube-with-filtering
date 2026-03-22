@@ -1,4 +1,5 @@
 name: "Downloading songs from YouTube with filtering"
+
 on:
   workflow_dispatch:
     inputs:
@@ -14,59 +15,55 @@ jobs:
   youtube_job:
     runs-on: ubuntu-latest
     permissions: write-all
+
     steps:
       - name: 1. Checkout code
         uses: actions/checkout@v4
 
-      - name: 2. Install yt-dlp and ffmpeg
+      - name: 2. Install dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg nodejs npm
+
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
-          sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: 3. Download Video
-        env:
-          YT_URL: ${{ github.event.inputs.yt_urls }}
-          YT_FORMAT: ${{ github.event.inputs.format }}
         run: |
           mkdir -p yt_output
-          
-          # יצירת קובץ עוגיות בצורה בטוחה יותר
-          cat <<EOF > cookies.txt
-          ${{ secrets.YT_COOKIES }}
-          EOF
-          
-          # בדיקה אם הקובץ נוצר ולא ריק
-          if [ ! -s cookies.txt ]; then
-            echo "Warning: cookies.txt is empty or not found. Check your YT_COOKIES secret."
-          fi
+          echo "${{ secrets.YT_COOKIES }}" > cookies.txt
 
-          if [ "$YT_FORMAT" = "mp3" ]; then
+          FORMAT="${{ github.event.inputs.format }}"
+          URL="${{ github.event.inputs.yt_urls }}"
+
+          if [ "$FORMAT" = "mp3" ]; then
             echo "מתחיל הורדת MP3..."
-            yt-dlp -v --cookies cookies.txt \
+            yt-dlp --cookies cookies.txt \
+              --extractor-args "youtube:player_client=android" \
               --no-playlist \
               -x --audio-format mp3 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
-              "$YT_URL"
+              "$URL"
           else
             echo "מתחיל הורדת MP4..."
             yt-dlp -v --cookies cookies.txt \
+              --extractor-args "youtube:player_client=android" \
               --no-playlist \
               -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
               --merge-output-format mp4 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
-              "$YT_URL"
+              "$URL"
           fi
-          
+
           rm cookies.txt
 
       - name: 4. Create Unique Release
         uses: ncipollo/release-action@v1
         with:
           artifacts: "yt_output/*"
-          tag: "download-${{ github.run_id }}-${{ github.run_number }}"
-          name: "YouTube Download ${{ github.run_id }}"
-          allowUpdates: true
+          tag: "run-${{ github.run_number }}"
+          name: "הורדה מספר ${{ github.run_number }}"
           token: ${{ secrets.GITHUB_TOKEN }}
+          makeLatest: true
