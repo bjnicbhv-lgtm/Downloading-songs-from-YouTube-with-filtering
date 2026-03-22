@@ -41,21 +41,22 @@ jobs:
             yt-dlp --cookies cookies.txt \
               --extractor-args "youtube:player_client=android" \
               --no-playlist \
+              -f "bestaudio/best" \
               -x --audio-format mp3 \
+              --audio-quality 0 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
               "$URL"
           else
             echo "מתחיל הורדת MP4..."
-          yt-dlp --cookies cookies.txt \
-  --extractor-args "youtube:player_client=android" \
-  --no-playlist \
-  -f "bestaudio/best" \
-  -x --audio-format mp3 \
-  --audio-quality 0 \
-  --embed-thumbnail --add-metadata \
-  -o "yt_output/%(title)s.%(ext)s" \
-  "$URL"
+            yt-dlp --cookies cookies.txt \
+              --extractor-args "youtube:player_client=android" \
+              --no-playlist \
+              -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
+              --merge-output-format mp4 \
+              --embed-thumbnail --add-metadata \
+              -o "yt_output/%(title)s.%(ext)s" \
+              "$URL"
           fi
 
           rm cookies.txt
