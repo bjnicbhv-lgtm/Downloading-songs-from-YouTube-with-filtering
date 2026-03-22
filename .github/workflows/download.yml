@@ -32,25 +32,22 @@ jobs:
           FORMAT="${{ github.event.inputs.format }}"
           URL="${{ github.event.inputs.yt_urls }}"
           
+          # הגדרות למניעת חסימות ופתרון בעיית Signature
+          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web"
+          
           if [ "$FORMAT" = "mp3" ]; then
             echo "מתחיל הורדת MP3..."
-            yt-dlp --cookies cookies.txt \
-              --no-playlist \
-              -x \
-              --audio-format mp3 \
-              --audio-quality 0 \
-              --embed-thumbnail \
-              --add-metadata \
+            yt-dlp $ARGS \
+              -x --audio-format mp3 \
+              --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
               "$URL"
           else
             echo "מתחיל הורדת MP4..."
-            yt-dlp --cookies cookies.txt \
-              --no-playlist \
+            yt-dlp $ARGS \
               -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
               --merge-output-format mp4 \
-              --embed-thumbnail \
-              --add-metadata \
+              --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
               "$URL"
           fi
@@ -61,7 +58,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "yt_output/*"
-          tag: "download-${{ github.run_id }}-${{ github.run_number }}"
-          name: "YouTube Download - ${{ github.run_id }}"
-          allowUpdates: true
+          tag: "download-${{ github.run_id }}-${{ github.run_attempt }}"
+          name: "הורדה מספר ${{ github.run_id }}"
+          body: "הקובץ מוכן להורדה."
           token: ${{ secrets.GITHUB_TOKEN }}
