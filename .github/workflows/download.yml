@@ -37,7 +37,7 @@ jobs:
             yt-dlp --cookies cookies.txt \
               --no-playlist \
               -f "ba/b" \
-              -x --audio-format mp3 \
+              -x --audio-format \
               --audio-quality 0 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
