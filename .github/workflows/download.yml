@@ -37,14 +37,16 @@ jobs:
             yt-dlp --cookies cookies.txt \
               --no-playlist \
               -x --audio-format mp3 \
+              --audio-quality 0 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
               "$URL"
           else
             echo "מתחיל הורדת MP4..."
+            # שינינו את הפורמט ל-best שכולל mp4 כדי למנוע את שגיאת ה-Requested format not available
             yt-dlp --cookies cookies.txt \
               --no-playlist \
-              -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
+              -f "best[ext=mp4]/best" \
               --merge-output-format mp4 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
@@ -57,7 +59,6 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "yt_output/*"
-          # יצירת תג ייחודי לפי מספר הריצה כדי שהסטרימליט יזהה בדיוק את השיר הנכון
           tag: "run-${{ github.run_number }}"
           name: "הורדה מספר ${{ github.run_number }}"
           token: ${{ secrets.GITHUB_TOKEN }}
