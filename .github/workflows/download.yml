@@ -25,32 +25,39 @@ jobs:
           sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: 3. Download Video
+        env:
+          YT_URL: ${{ github.event.inputs.yt_urls }}
+          YT_FORMAT: ${{ github.event.inputs.format }}
         run: |
           mkdir -p yt_output
-          echo "${{ secrets.YT_COOKIES }}" > cookies.txt
           
-          FORMAT="${{ github.event.inputs.format }}"
-          URL="${{ github.event.inputs.yt_urls }}"
+          # יצירת קובץ עוגיות בצורה בטוחה יותר
+          cat <<EOF > cookies.txt
+          ${{ secrets.YT_COOKIES }}
+          EOF
           
-          if [ "$FORMAT" = "mp3" ]; then
+          # בדיקה אם הקובץ נוצר ולא ריק
+          if [ ! -s cookies.txt ]; then
+            echo "Warning: cookies.txt is empty or not found. Check your YT_COOKIES secret."
+          fi
+
+          if [ "$YT_FORMAT" = "mp3" ]; then
             echo "מתחיל הורדת MP3..."
-            yt-dlp --cookies cookies.txt \
+            yt-dlp -v --cookies cookies.txt \
               --no-playlist \
               -x --audio-format mp3 \
-              --audio-quality 0 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
-              "$URL"
+              "$YT_URL"
           else
             echo "מתחיל הורדת MP4..."
-            # שינינו את הפורמט ל-best שכולל mp4 כדי למנוע את שגיאת ה-Requested format not available
-            yt-dlp --cookies cookies.txt \
+            yt-dlp -v --cookies cookies.txt \
               --no-playlist \
-              -f "best[ext=mp4]/best" \
+              -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
               --merge-output-format mp4 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
-              "$URL"
+              "$YT_URL"
           fi
           
           rm cookies.txt
@@ -59,7 +66,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "yt_output/*"
-          tag: "run-${{ github.run_number }}"
-          name: "הורדה מספר ${{ github.run_number }}"
+          tag: "download-${{ github.run_id }}-${{ github.run_number }}"
+          name: "YouTube Download ${{ github.run_id }}"
+          allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
-          makeLatest: true
