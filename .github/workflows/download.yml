@@ -18,18 +18,18 @@ jobs:
       - name: 1. Checkout code
         uses: actions/checkout@v4
 
-      - name: 2. Install Dependencies (yt-dlp, ffmpeg, get-pot)
+   - name: 2. Install Dependencies (Node.js, yt-dlp, ffmpeg, get-pot)
         run: |
+          # התקנת Node.js ישירות מהמאגרים של אובונטו
+          sudo apt-get update
+          sudo apt-get install -y nodejs npm ffmpeg
+          
           # התקנת yt-dlp העדכני ביותר
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
           
-          # התקנת ffmpeg
-          sudo apt-get update && sudo apt-get install -y ffmpeg
-          
-          # התקנת התוסף שהעלית לפתרון בעיית ה-Token
+          # התקנת התוסף שהעלית
           pip install yt_dlp_get_pot-0.3.0-py3-none-any.whl
-
       - name: 3. Download Video
         run: |
           mkdir -p yt_output
