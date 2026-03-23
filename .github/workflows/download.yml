@@ -14,50 +14,57 @@ jobs:
   youtube_job:
     runs-on: ubuntu-latest
     permissions: write-all
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
       - name: 1. Checkout code
         uses: actions/checkout@v4
 
-      - name: 2. Install yt-dlp, ffmpeg and Node.js
+      - name: 2. Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 3. Install yt-dlp and ffmpeg
         run: |
-          # התקנת Node.js הכרחית לפתרון ה-n challenge של יוטיוב
           sudo apt-get update
-          sudo apt-get install -y nodejs ffmpeg
+          sudo apt-get install -y ffmpeg
           
           # התקנת הגרסה האחרונה של yt-dlp
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
 
-      - name: 3. Download Video
+      - name: 4. Download Video
         env:
           YT_URL: ${{ github.event.inputs.yt_urls }}
           YT_FORMAT: ${{ github.event.inputs.format }}
         run: |
           mkdir -p yt_output
           
+          # שימוש ב-extractor-args כדי לדמות לקוח מובייל ולעקוף חסימות בוטים
           if [ "$YT_FORMAT" = "mp3" ]; then
-            echo "מתחיל הורדת MP3 ללא עוגיות..."
+            echo "מתחיל הורדת MP3 עם הגדרות מעקף..."
             yt-dlp -v \
               --no-playlist \
+              --force-ipv4 \
               -x --audio-format mp3 \
+              --extractor-args "youtube:player-client=android,ios" \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
               "$YT_URL"
           else
-            echo "מתחיל הורדת MP4 ללא עוגיות..."
+            echo "מתחיל הורדת MP4 עם הגדרות מעקף..."
             yt-dlp -v \
               --no-playlist \
+              --force-ipv4 \
               -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
+              --extractor-args "youtube:player-client=android,ios" \
               --merge-output-format mp4 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
               "$YT_URL"
           fi
 
-      - name: 4. Create Unique Release
+      - name: 5. Create Unique Release
         uses: ncipollo/release-action@v1
         with:
           artifacts: "yt_output/*"
