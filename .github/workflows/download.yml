@@ -14,13 +14,16 @@ jobs:
   youtube_job:
     runs-on: ubuntu-latest
     permissions: write-all
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    
     steps:
       - name: 1. Checkout code
         uses: actions/checkout@v4
 
-   - name: 2. Install Dependencies (Node.js, yt-dlp, ffmpeg, get-pot)
+      - name: 2. Install Dependencies (Node.js, yt-dlp, ffmpeg, get-pot)
         run: |
-          # התקנת Node.js ישירות מהמאגרים של אובונטו
+          # התקנת Node.js ו-npm ישירות מהמאגרים של אובונטו
           sudo apt-get update
           sudo apt-get install -y nodejs npm ffmpeg
           
@@ -28,33 +31,34 @@ jobs:
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
           
-          # התקנת התוסף שהעלית
+          # התקנת התוסף שהעלית (קובץ ה-whl חייב להיות בתיקייה הראשית)
           pip install yt_dlp_get_pot-0.3.0-py3-none-any.whl
+
       - name: 3. Download Video
+        env:
+          YT_URL: ${{ github.event.inputs.yt_urls }}
+          YT_FORMAT: ${{ github.event.inputs.format }}
         run: |
           mkdir -p yt_output
           
-          FORMAT="${{ github.event.inputs.format }}"
-          URL="${{ github.event.inputs.yt_urls }}"
+          # הגדרות מעקף הכוללות את התוסף getpot ודימוי לקוח ios ליציבות מקסימלית
+          COMMON_ARGS="--no-playlist --extractor-args \"youtube:getpot;player_client=ios\""
           
-          # הגדרות משותפות לעקיפת חסימות בעזרת התוסף שהותקן
-          COMMON_ARGS="--no-playlist --extractor-args \"youtube:getpot\""
-          
-          if [ "$FORMAT" = "mp3" ]; then
-            echo "מתחיל הורדת MP3 עם מעקף Get-Pot..."
+          if [ "$YT_FORMAT" = "mp3" ]; then
+            echo "מתחיל הורדת MP3 עם מעקף Token..."
             yt-dlp $COMMON_ARGS \
               -x --audio-format mp3 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
-              "$URL"
+              "$YT_URL"
           else
-            echo "מתחיל הורדת MP4 עם מעקף Get-Pot..."
+            echo "מתחיל הורדת MP4 עם מעקף Token..."
             yt-dlp $COMMON_ARGS \
               -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
               --merge-output-format mp4 \
               --embed-thumbnail --add-metadata \
               -o "yt_output/%(title)s.%(ext)s" \
-              "$URL"
+              "$YT_URL"
           fi
 
       - name: 4. Create Unique Release
@@ -62,6 +66,6 @@ jobs:
         with:
           artifacts: "yt_output/*"
           tag: "download-${{ github.run_id }}-${{ github.run_number }}"
-          name: "הורדה מושלמת - ${{ github.run_id }}"
+          name: "YouTube Download - ${{ github.run_id }}"
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
