@@ -18,12 +18,20 @@ jobs:
       - name: 1. Checkout code
         uses: actions/checkout@v4
 
-      - name: 2. Install yt-dlp and ffmpeg
+      - name: 2. Install Dependencies (Node.js, yt-dlp, ffmpeg)
         run: |
+          # עדכון מאגרים והתקנת Node.js, npm ו-ffmpeg
+          sudo apt-get update
+          sudo apt-get install -y nodejs npm ffmpeg
+          
+          # התקנת yt-dlp העדכני ביותר
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
-          sudo apt-get update && sudo apt-get install -y ffmpeg
-
+          
+          # בדיקת גרסאות (אופציונלי, לווידוא שהכל הותקן)
+          node -v
+          npm -v
+          
       - name: 3. Download Video
         run: |
           mkdir -p yt_output
