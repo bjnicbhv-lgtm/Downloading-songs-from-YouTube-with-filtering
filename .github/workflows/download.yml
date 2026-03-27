@@ -1,4 +1,5 @@
 name: "Downloading songs from YouTube with filtering"
+
 on:
   workflow_dispatch:
     inputs:
@@ -20,33 +21,39 @@ jobs:
 
       - name: 2. Install Dependencies
         run: |
-          # התקנת yt-dlp העדכני ביותר
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
-          # התקנת ffmpeg
           sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: 3. Download Video
+      - name: 3. Download Video & Set Metadata
         run: |
           mkdir -p yt_output
           
           # יצירת קובץ עוגיות
-          cat <<EOF > cookies.txt
-          ${{ secrets.YT_COOKIES }}
-          EOF
-          
+          echo "${{ secrets.YT_COOKIES }}" > cookies.txt
           sed -i '/^$/d' cookies.txt
 
           FORMAT="${{ github.event.inputs.format }}"
           URL="${{ github.event.inputs.yt_urls }}"
           
-          # הוספנו --restrict-filenames כדי למנוע תווים שמשבשים את ה-Release
-          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node --restrict-filenames"
+          # הגדרות בסיסיות ל-yt-dlp
+          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --restrict-filenames"
           
           if [ "$FORMAT" = "mp3" ]; then
-            yt-dlp $ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata -o "yt_output/%(title)s.%(ext)s" "$URL"
+            # הורדה כ-MP3 עם הטמעת מטא-דאטה
+            yt-dlp $ARGS -x --audio-format mp3 --add-metadata --embed-thumbnail -o "yt_output/%(title)s.%(ext)s" "$URL"
           else
-            yt-dlp $ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata -o "yt_output/%(title)s.%(ext)s" "$URL"
+            # הורדה כ-MP4
+            # שלב א': הורדה רגילה
+            yt-dlp $ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 -o "temp_video.%(ext)s" "$URL"
+            
+            # שלב ב': שליפת הכותרת לתוך משתנה (כדי להשתמש בה ב-ffmpeg כמו שביקשת)
+            VIDEO_TITLE=$(yt-dlp --get-title --no-playlist "$URL")
+            
+            # שלב ג': שימוש ב-ffmpeg להוספת מטא-דאטה ושמירה בשם הנכון (ללא קידוד מחדש)
+            ffmpeg -i temp_video.mp4 -metadata title="$VIDEO_TITLE" -c copy "yt_output/$VIDEO_TITLE.mp4"
+            
+            rm temp_video.mp4
           fi
           
           rm cookies.txt
@@ -55,9 +62,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "yt_output/*"
-          # שינוי ה-Tag למספר הריצה הסידורי
           tag: "v${{ github.run_number }}" 
-          # שינוי הכותרת שמופיעה בתמונה למספר הריצה
           name: "הורדה מספר ${{ github.run_number }}"
-          body: "הקובץ מוכן להורדה."
+          body: "הקובץ מוכן להורדה עם מטא-דאטה מעודכן."
           token: ${{ secrets.GITHUB_TOKEN }}
