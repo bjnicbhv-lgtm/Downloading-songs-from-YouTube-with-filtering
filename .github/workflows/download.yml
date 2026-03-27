@@ -16,41 +16,36 @@ jobs:
     permissions: write-all
     steps:
       - name: 1. Checkout code
-        uses: actions/checkout@v4
+        [cite_start]uses: actions/checkout@v4 [cite: 2]
 
       - name: 2. Install Dependencies
         run: |
-          # התקנת yt-dlp העדכני ביותר
-          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-          sudo chmod a+rx /usr/local/bin/yt-dlp
-          # התקנת ffmpeg
-          sudo apt-get update && sudo apt-get install -y ffmpeg
+          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp 
+          sudo chmod a+rx /usr/local/bin/yt-dlp 
+          sudo apt-get update && sudo apt-get install -y ffmpeg 
 
       - name: 3. Download Video and Get Title
         id: download_step
         run: |
-          mkdir -p yt_output
+          mkdir -p yt_output [cite: 4]
           
           cat <<EOF > cookies.txt
           ${{ secrets.YT_COOKIES }}
           EOF
-          sed -i '/^$/d' cookies.txt
+          [cite_start]sed -i '/^$/d' cookies.txt [cite: 5]
 
           FORMAT="${{ github.event.inputs.format }}"
           URL="${{ github.event.inputs.yt_urls }}"
-          # []הגדרות לשליפת השם ומניעת שגיאות [: 5]
-          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node"
+          [cite_start]ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node" [cite: 5]
           
-          # []שליפת שם הסרטון מיוטיוב [: 3]
+          # שליפת שם הסרטון בצורה בטוחה
           VIDEO_TITLE=$(yt-dlp $ARGS --get-title "$URL")
-          echo "video_title=$VIDEO_TITLE" >> $GITHUB_OUTPUT
+          [cite_start]echo "video_title=$VIDEO_TITLE" >> $GITHUB_OUTPUT [cite: 3]
 
-          if [ "$FORMAT" = "mp3" ]; then
-            # []הורדה כ-MP3 תוך שמירה על כותרת הסרטון כשם הקובץ [: 6, 7]
-            yt-dlp $ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata --parse-metadata "title:%(title)s" -o "yt_output/%(title)s.%(ext)s" "$URL"
+          [cite_start]if [ "$FORMAT" = "mp3" ]; then [cite: 6]
+            [cite_start]yt-dlp $ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata --parse-metadata "title:%(title)s" -o "yt_output/%(title)s.%(ext)s" "$URL" [cite: 7]
           else
-            # []הורדה כ-MP4 באיכות מיטבית [: 7]
-            yt-dlp $ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata --parse-metadata "title:%(title)s" -o "yt_output/%(title)s.%(ext)s" "$URL"
+            [cite_start]yt-dlp $ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata --parse-metadata "title:%(title)s" -o "yt_output/%(title)s.%(ext)s" "$URL" [cite: 7]
           fi
           
           rm cookies.txt
@@ -60,7 +55,6 @@ jobs:
         with:
           artifacts: "yt_output/*"
           tag: "run-${{ github.run_number }}"
-          # הכותרת תהיה שם השיר + מספר הריצה
-          name: "${{ steps.download_step.outputs.video_title }} (#${{ github.run_number }})"
+          name: "${{ steps.download_step.outputs.video_title }} (#${{ github.run_number shadow}})"
           body: "הקובץ מוכן להורדה."
           [cite_start]token: ${{ secrets.GITHUB_TOKEN }} [cite: 9]
