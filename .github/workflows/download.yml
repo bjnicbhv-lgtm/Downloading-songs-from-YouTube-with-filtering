@@ -34,21 +34,37 @@ jobs:
           cat <<EOF > cookies.txt
           ${{ secrets.YT_COOKIES }}
           EOF
-          
           sed -i '/^$/d' cookies.txt
 
           FORMAT="${{ github.event.inputs.format }}"
           URL="${{ github.event.inputs.yt_urls }}"
           
-          # הערה: הסרתי את --restrict-filenames כדי לאפשר שמות בעברית עם רווחים כפי שהם במקור
-          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node --match-filter \"!categories ~= '(?i)Porn|XXX|Hardcore|Sex|Blowjob|Anal|Hentai|NSFW|Fetish|Pornstar|Erotica|פורנו|סקס|זיון|מציצה|בוטה' & !description ~= '(?i)Porn|XXX|Hardcore|Sex|Blowjob|Anal|Hentai|NSFW|Fetish|Pornstar|Erotica|פורנו|סקס|זיון|מציצה|בוטה|אודיה|נועה קירל|נעה קירל|אנה זק|עדן בן זקן|שרית חדד|שירי מימון|מארינה מקסימיליאן|קרן פלס|מירי מסיקה|נסרין קדרי|נינט טייב|אגם בוחבוט|רוני דואני|דנה אינטרנשיונל|יובל דיין|שי המבר|נטע ברזילי|ואלרי חמאתי|יסמין מועלם|נונו|אלה לי|גלי עטרי|ריטה|עפרה חזה|חוה אלברשטיין|נרקיס|אילנית|ירדנה ארזי|מור שטייגל|ענבל ביבי|רוני דלומי|מאיה בוסקילה|נורית גלרון|קורין אלאל|יהודית רביץ|אתי אנקרי|זהבה בן|מרגלית צנעני|אביבה אבידן|לינט|עדן גולן|טלי קופר|עדי ביטי|שפיטה|סי היימן|מיקה קרני|דנה ברגר|איגי וקסמן|רונה קינן|מיקה משה|אלין גולן|ליהי טולדנו|גל דה פז|שושנה דמארי|יפה ירקוני|שרון חזיז|לאה שבת|שלווה ברטי|דפנה ארמוני|שרון רוטר|ג'וזי כץ|דורית ראובני' & !title ~= '(?i)Porn|XXX|Hardcore|Sex|Blowjob|Anal|Hentai|NSFW|Fetish|Pornstar|Erotica|פורנו|סקס|זיון|מציצה|בוטה|אודיה|נועה קירל|נעה קירל|אנה זק|עדן בן זקן|שרית חדד|שירי מימון|מארינה מקסימיליאן|קרן פלס|מירי מסיקה|נסרין קדרי|נינט טייב|אגם בוחבוט|רוני דואני|דנה אינטרנשיונל|יובל דיין|שי המבר|נטע ברזילי|ואלרי חמאתי|יסמין מועלם|נונו|אלה לי|גלי עטרי|ריטה|עפרה חזה|חוה אלברשטיין|נרקיס|אילנית|ירדנה ארזי|מור שטייגל|ענבל ביבי|רוני דלומי|מאיה בוסקילה|נורית גלרון|קורין אלאל|יהודית רביץ|אתי אנקרי|זהבה בן|מרגלית צנעני|אביבה אבידן|לינט|עדן גולן|טלי קופר|עדי ביטי|שפיטה|סי היימן|מיקה קרני|דנה ברגר|איגי וקסמן|רונה קינן|מיקה משה|אלין גולן|ליהי טולדנו|גל דה פז|שושנה דמארי|יפה ירקוני|שרון חזיז|לאה שבת|שלווה ברטי|דפנה ארמוני|שרון רוטר|ג'וזי כץ|דורית ראובני'\""
+          # 1. הגדרת רשימת המילים האסורות (פורנו + מגדרי + זמרות)
+          KEYWORDS="Porn|XXX|Hardcore|Sex|Blowjob|Anal|Hentai|NSFW|Fetish|Pornstar|Erotica|פורנו|סקס|זיון|מציצה|בוטה|אירוטי|זימה|זמרת|שירה|אישה|בת|ילדה|נערה|זמרות|Singer|Woman|Girl|She|Her|Female|אודיה|נועה קירל|נעה קירל|אנה זק|עדן בן זקן|שרית חדד|שירי מימון|מארינה מקסימיליאן|קרן פלס|מירי מסיקה|נסרין קדרי|נינט טייב|אגם בוחבוט|רוני דואני|דנה אינטרנשיונל|יובל דיין|שי המבר|נטע ברזילי|ואלרי חמאתי|יסמין מועלם|נונו|אלה לי|גלי עטרי|ריטה|עפרה חזה|חוה אלברשטיין|נרקיס|אילנית|ירדנה ארזי|מור שטייגל|ענבל ביבי|רוני דלומי|מאיה בוסקילה|נורית גלרון|קורין אלאל|יהודית רביץ|אתי אנקרי|זהבה בן|מרגלית צנעני|אביבה אבידן|לינט|עדן גולן|טלי קופר|עדי ביטי|שפיטה|סי היימן|מיקה קרני|דנה ברגר|איגי וקסמן|רונה קינן|מיקה משה|אלין גולן|ליהי טולדנו|גל דה פז|שושנה דמארי|יפה ירקוני|שרון חזיז|לאה שבת|שלווה ברטי|דפנה ארמוני|שרון רוטר|ג'וזי כץ|דורית ראובני|אקו|שירה מרגלית|איה כורם|אפרת גוש|דניאלה ספקטור|מורן אהרוני|מירי אלוני|שולי נתן|נופר סלמאן|מעיין אשכנזי|שירה גבריאלוב|סיון|שרי|אסתר עופרים|ריקי גל|רוחמה רז"
+
+          # 2. חילוץ מידע מהסרטון לבדיקה (כותרת, תיאור וקטגוריות)
+          echo "Checking video metadata for forbidden keywords..."
+          VIDEO_INFO=$(yt-dlp --cookies cookies.txt --no-playlist --print "%(title)s %(description)s %(categories)s" "$URL")
+          
+          # 3. חיפוש המילה הבעייתית
+          MATCHED_WORD=$(echo "$VIDEO_INFO" | grep -ioP "$KEYWORDS" | head -1 || true)
+
+          if [ -n "$MATCHED_WORD" ]; then
+            echo "========================================================="
+            echo "❌ SKIP: Download cancelled!"
+            echo "🚫 Reason: Found forbidden keyword -> '$MATCHED_WORD'"
+            echo "========================================================="
+            exit 0 # מסיים את השלב בהצלחה אך ללא הורדה
+          fi
+
+          # 4. אם לא נמצאה מילה אסורה - מבצעים את ההורדה
+          echo "✅ No forbidden keywords found. Starting download..."
+          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node"
           
           if [ "$FORMAT" = "mp3" ]; then
-            # שימוש ב-Template ששואב את ה-Title ושם אותו בתוך גרשיים
-            yt-dlp $ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata -o "yt_output/\"%(title)s\".%(ext)s" "$URL"
+            yt-dlp $ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata -o "yt_output/%(title)s.%(ext)s" "$URL"
           else
-            # אותו דבר עבור פורמט MP4
-            yt-dlp $ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata -o "yt_output/\"%(title)s\".%(ext)s" "$URL"
+            yt-dlp $ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata -o "yt_output/%(title)s.%(ext)s" "$URL"
           fi
           
           rm cookies.txt
