@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - name: 1. Checkout
+      - name: 1. Checkout code
         uses: actions/checkout@v4
 
       - name: 2. Install Dependencies
@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p yt_output
           
-          # יצירת קובץ עוגיות
+          # יצירת קובץ עוגיות מה-Secret
           cat <<EOF > cookies.txt
           ${{ secrets.YT_COOKIES }}
           EOF
@@ -37,17 +37,16 @@ jobs:
           URL="${{ github.event.inputs.yt_urls }}"
           FORMAT="${{ github.event.inputs.format }}"
           
-          # --- רשימת מילים לחסימה (ערוך כאן בלבד) ---
-          # המילים מופרדות בסימן | ללא רווחים מיותרים
-          BLOCK_LIST="יהודה|סקס|פורנו|sex|porn"
-          # ---------------------------------------
+          # --- כאן אתה מגדיר את המילים לסינון (נסתר מהממשק) ---
+          # פשוט תוסיף מילים ותפריד אותן בסימן |
+          INTERNAL_BLOCK_LIST="יהודה|סקס|פורנו|sex|porn"
+          # -----------------------------------------------
 
-          # הגדרות בסיסיות
+          # הגדרות הרצה
           ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node --embed-thumbnail --add-metadata"
           
-          # בניית הפילטר בצורה בטוחה ללא סוגריים שיכולים לשבור את הריצה
-          # הסבר: title!~* אומר "אל תוריד אם הכותרת מכילה (בלי קשר לאותיות גדולות/קטנות)"
-          FILTER="title!~*(?i)$BLOCK_LIST"
+          # בניית הפילטר: (?i) גורם לזה להתעלם מהבדלי אותיות גדולות/קטנות באנגלית
+          FILTER="title!~*(?i)($INTERNAL_BLOCK_LIST)"
 
           if [ "$FORMAT" = "mp3" ]; then
             yt-dlp $ARGS --match-filter "$FILTER" -x --audio-format mp3 -o "yt_output/%(title)s.%(ext)s" "$URL"
