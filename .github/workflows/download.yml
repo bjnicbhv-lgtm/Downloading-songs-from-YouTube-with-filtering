@@ -1,65 +1,82 @@
-name: "Downloading songs from YouTube with filtering"
+[cite_start]name: "Downloading songs from YouTube with filtering" [cite: 1]
 on:
   workflow_dispatch:
     inputs:
-      yt_urls:
-        description: 'הדבק קישור (למשל מיוטיוב)'
-        required: true
-      format:
-        description: 'mp3 או mp4'
-        default: 'mp3'
-        required: true
+      [cite_start]yt_urls: [cite: 1]
+        [cite_start]description: 'הדבק קישור (למשל מיוטיוב)' [cite: 1]
+        [cite_start]required: true [cite: 1]
+      [cite_start]format: [cite: 1]
+        [cite_start]description: 'mp3 או mp4' [cite: 1]
+        [cite_start]default: 'mp3' [cite: 1]
+        [cite_start]required: true [cite: 1]
+      # רשימת המילים לחסימה (מופרדות בפסיק)
+      exclude_words:
+        description: 'מילים לסינון (מופרדות בפסיק)'
+        required: false
+        default: 'יהודה, סקס, פורנו, sex, porn'
 
 jobs:
-  youtube_job:
-    runs-on: ubuntu-latest
-    permissions: write-all
+  [cite_start]youtube_job: [cite: 1]
+    [cite_start]runs-on: ubuntu-latest [cite: 2]
+    [cite_start]permissions: write-all [cite: 2]
     steps:
-      - name: 1. Checkout code
-        uses: actions/checkout@v4
+      - [cite_start]name: 1. Checkout [cite: 2]
+        [cite_start]uses: actions/checkout@v4 [cite: 2]
 
-      - name: 2. Install Dependencies
-        run: |
-          # התקנת yt-dlp העדכני ביותר
-          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-          sudo chmod a+rx /usr/local/bin/yt-dlp
-          # התקנת ffmpeg
-          sudo apt-get update && sudo apt-get install -y ffmpeg
+      - [cite_start]name: 2. Install Dependencies [cite: 3]
+        [cite_start]run: | [cite: 3]
+          # התקנת yt-dlp העדכני ביותר [cite: 3]
+          [cite_start]sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp [cite: 3]
+          [cite_start]sudo chmod a+rx /usr/local/bin/yt-dlp [cite: 3]
+          # התקנת ffmpeg [cite: 3]
+          [cite_start]sudo apt-get update && sudo apt-get install -y ffmpeg [cite: 3]
 
-      - name: 3. Download Video
-        run: |
-          mkdir -p yt_output
+      - [cite_start]name: 3. Download Video [cite: 4]
+        [cite_start]run: | [cite: 4]
+          [cite_start]mkdir -p yt_output [cite: 4]
           
-          # יצירת קובץ עוגיות
-          cat <<EOF > cookies.txt
-          ${{ secrets.YT_COOKIES }}
+          # יצירת קובץ עוגיות [cite: 4]
+          [cite_start]cat <<EOF > cookies.txt [cite: 4]
+          [cite_start]${{ secrets.YT_COOKIES }} [cite: 4]
           EOF
           
-          sed -i '/^$/d' cookies.txt
+          [cite_start]sed -i '/^$/d' cookies.txt [cite: 4]
 
-          FORMAT="${{ github.event.inputs.format }}"
-          URL="${{ github.event.inputs.yt_urls }}"
+          [cite_start]FORMAT="${{ github.event.inputs.format }}" [cite: 4]
+          [cite_start]URL="${{ github.event.inputs.yt_urls }}" [cite: 5]
           
-          # הערה: הסרתי את --restrict-filenames כדי לאפשר שמות בעברית עם רווחים כפי שהם במקור
-          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node"
+          # 1. קליטת רשימת המילים לסינון מהגדרות הקלט
+          EXCLUDE="${{ github.event.inputs.exclude_words }}"
           
-          if [ "$FORMAT" = "mp3" ]; then
-            # שימוש ב-Template ששואב את ה-Title ושם אותו בתוך גרשיים
-            yt-dlp $ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata -o "yt_output/\"%(title)s\".%(ext)s" "$URL"
-          else
-            # אותו דבר עבור פורמט MP4
-            yt-dlp $ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata -o "yt_output/\"%(title)s\".%(ext)s" "$URL"
+          [cite_start]ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node" [cite: 5]
+          
+          # 2. בניית הפילטר: הופך פסיקים לסימן "או" (|) ומוסיף הגנה של גרשיים
+          FILTER_ARG=""
+          if [ -n "$EXCLUDE" ]; then
+            # הופך למשל את "יהודה, קריוקי" ל- "יהודה|קריוקי"
+            REGEX=$(echo "$EXCLUDE" | sed 's/,/|/g')
+            # הפילטר אומר ל-yt-dlp: "אל תוריד אם הכותרת מכילה את הביטוי"
+            FILTER_ARG="--match-filter \"title !~* '(?i)$REGEX'\""
           fi
-          
-          rm cookies.txt
 
-      - name: 4. Create Unique Release
-        uses: ncipollo/release-action@v1
+          # 3. הרצת ההורדה עם eval כדי לטפל נכון בגרשיים וברווחים
+          [cite_start]if [ "$FORMAT" = "mp3" ]; then [cite: 5, 6]
+            # שימוש בגרשיים בודדים עטופים בכפולים לשמירה על שמות עם רווחים 
+            [cite_start]eval yt-dlp $ARGS $FILTER_ARG -x --audio-format mp3 --embed-thumbnail --add-metadata -o "'yt_output/%(title)s.%(ext)s'" "$URL" [cite: 6]
+          [cite_start]else [cite: 6]
+            [cite_start]eval yt-dlp $ARGS $FILTER_ARG -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata -o "'yt_output/%(title)s.%(ext)s'" "$URL" [cite: 6]
+          [cite_start]fi [cite: 7]
+          
+          [cite_start]rm cookies.txt [cite: 7]
+
+      - [cite_start]name: 4. Create Unique Release [cite: 7]
+        [cite_start]uses: ncipollo/release-action@v1 [cite: 7]
         with:
-          artifacts: "yt_output/*"
-          # שינוי ה-Tag למספר הריצה הסידורי
-          tag: "v${{ github.run_number }}" 
-          # שינוי הכותרת שמופיעה בתמונה למספר הריצה
-          name: "הורדה מספר ${{ github.run_number }}"
-          body: "הקובץ מוכן להורדה."
-          token: ${{ secrets.GITHUB_TOKEN }}
+          [cite_start]artifacts: "yt_output/*" [cite: 7]
+          # שינוי ה-Tag למספר הריצה הסידורי [cite: 7]
+          [cite_start]tag: "v${{ github.run_number }}" [cite: 7]
+          
+          # שינוי הכותרת שמופיעה בתמונה למספר הריצה [cite: 8]
+          [cite_start]name: "הורדה מספר ${{ github.run_number }}" [cite: 8]
+          [cite_start]body: "הקובץ מוכן להורדה." [cite: 8]
+          [cite_start]token: ${{ secrets.GITHUB_TOKEN }} [cite: 9]
