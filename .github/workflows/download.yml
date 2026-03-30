@@ -9,10 +9,6 @@ on:
         description: 'mp3 או mp4'
         default: 'mp3'
         required: true
-      exclude_words:
-        description: 'מילים לסינון (מופרדות בפסיק)'
-        required: false
-        default: 'יהודה, סקס, פורנו, sex, porn'
 
 jobs:
   youtube_job:
@@ -38,29 +34,23 @@ jobs:
           EOF
           sed -i '/^$/d' cookies.txt
 
-          # הגדרת משתנים
-          FORMAT="${{ github.event.inputs.format }}"
           URL="${{ github.event.inputs.yt_urls }}"
-          EXCLUDE="${{ github.event.inputs.exclude_words }}"
+          FORMAT="${{ github.event.inputs.format }}"
           
-          # הכנת רג'קס (Regex) מהמילים לסינון
-          # הופך "א, ב" ל-"א|ב"
-          FILTER_REGEX=$(echo "$EXCLUDE" | sed 's/, /|/g' | sed 's/,/|/g')
-          
-          # הגדרות בסיסיות לכל הורדה
-          COMMON_ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node --embed-thumbnail --add-metadata"
-          
-          # בדיקה אם יש מילים לסינון - אם כן, מוסיפים את דגל הפילטר
-          MATCH_FILTER=""
-          if [ -n "$FILTER_REGEX" ]; then
-            MATCH_FILTER="--match-filter title!~*(?i)($FILTER_REGEX)"
-          fi
+          # --- כאן אתה עורך את רשימת המילים האסורות (בתוך הקוד) ---
+          # פשוט תוסיף מילים ותפריד אותן בסימן | (קו אנכי)
+          FILTER_REGEX="יהודה|סקס|פורנו|sex|porn|אודיה"
+          # ----------------------------------------------------
 
-          # הרצה לפי הפורמט הנבחר
+          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node --embed-thumbnail --add-metadata"
+          
+          # הפילטר בודק אם הכותרת מכילה את אחת המילים ((?i) הופך את זה ללא רגיש לאותיות גדולות/קטנות באנגלית)
+          MATCH_FILTER="--match-filter title!~*(?i)($FILTER_REGEX)"
+
           if [ "$FORMAT" = "mp3" ]; then
-            yt-dlp $COMMON_ARGS $MATCH_FILTER -x --audio-format mp3 -o "yt_output/%(title)s.%(ext)s" "$URL"
+            yt-dlp $ARGS "$MATCH_FILTER" -x --audio-format mp3 -o "yt_output/%(title)s.%(ext)s" "$URL"
           else
-            yt-dlp $COMMON_ARGS $MATCH_FILTER -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 -o "yt_output/%(title)s.%(ext)s" "$URL"
+            yt-dlp $ARGS "$MATCH_FILTER" -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 -o "yt_output/%(title)s.%(ext)s" "$URL"
           fi
           
           rm cookies.txt
