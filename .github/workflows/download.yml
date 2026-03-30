@@ -1,9 +1,9 @@
-name: "Fast YT Downloader"
+name: "Downloading songs from YouTube with filtering"
 on:
   workflow_dispatch:
     inputs:
       yt_urls:
-        description: 'הדבק קישור'
+        description: 'הדבק קישור (למשל מיוטיוב)'
         required: true
       format:
         description: 'mp3 או mp4'
@@ -15,40 +15,51 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - name: 1. Checkout
+      - name: 1. Checkout code
         uses: actions/checkout@v4
 
-      - name: 2. Setup Tools
+      - name: 2. Install Dependencies
         run: |
-          # התקנה מהירה רק אם חסר
-          if ! command -v yt-dlp &> /dev/null; then
-            sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-            sudo chmod a+rx /usr/local/bin/yt-dlp
-          fi
+          # התקנת yt-dlp העדכני ביותר
+          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+          sudo chmod a+rx /usr/local/bin/yt-dlp
+          # התקנת ffmpeg
+          sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: 3. Download
+      - name: 3. Download Video
         run: |
-          mkdir -p out
-          echo "${{ secrets.YT_COOKIES }}" > cookies.txt
+          mkdir -p yt_output
           
-          # הגדרת הגדרות מהירות לפי הפורמט
-          if [ "${{ github.event.inputs.format }}" = "mp3" ]; then
-            OPTS="-x --audio-format mp3"
-          else
-            OPTS="-f bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best --merge-output-format mp4"
-          fi
+          # יצירת קובץ עוגיות
+          cat <<EOF > cookies.txt
+          ${{ secrets.YT_COOKIES }}
+          EOF
+          
+          sed -i '/^$/d' cookies.txt
 
-          # הורדה ישירה ללא סינונים
-          yt-dlp --cookies cookies.txt --no-playlist $OPTS \
-            --embed-thumbnail --add-metadata \
-            -o "out/%(title)s.%(ext)s" "${{ github.event.inputs.yt_urls }}"
+          FORMAT="${{ github.event.inputs.format }}"
+          URL="${{ github.event.inputs.yt_urls }}"
+          
+          # הערה: הסרתי את --restrict-filenames כדי לאפשר שמות בעברית עם רווחים כפי שהם במקור
+          ARGS="--cookies cookies.txt --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node"
+          
+          if [ "$FORMAT" = "mp3" ]; then
+            # שימוש ב-Template ששואב את ה-Title ושם אותו בתוך גרשיים
+            yt-dlp $ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata -o "yt_output/\"%(title)s\".%(ext)s" "$URL"
+          else
+            # אותו דבר עבור פורמט MP4
+            yt-dlp $ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata -o "yt_output/\"%(title)s\".%(ext)s" "$URL"
+          fi
           
           rm cookies.txt
 
-      - name: 4. Release
+      - name: 4. Create Unique Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "out/*"
-          tag: "v${{ github.run_number }}"
-          name: "הורדה ${{ github.run_number }}"
+          artifacts: "yt_output/*"
+          # שינוי ה-Tag למספר הריצה הסידורי
+          tag: "v${{ github.run_number }}" 
+          # שינוי הכותרת שמופיעה בתמונה למספר הריצה
+          name: "הורדה מספר ${{ github.run_number }}"
+          body: "הקובץ מוכן להורדה."
           token: ${{ secrets.GITHUB_TOKEN }}
