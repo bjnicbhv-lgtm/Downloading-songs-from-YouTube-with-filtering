@@ -15,22 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     env:
-      # הגדרת המערכת לתמיכה בעברית ותווים מיוחדים
-      LANG: C.UTF-8
-      LC_ALL: C.UTF-8
+      # הגדרות שפה גלובליות לכל ה-Job
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      PYTHONIOENCODING: utf-8
     steps:
       - name: 1. Checkout code
         uses: actions/checkout@v4
 
       - name: 2. Install Dependencies
         run: |
-          if ! command -v ffmpeg &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y ffmpeg
-          fi
-          if ! command -v yt-dlp &> /dev/null; then
-            sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-            sudo chmod a+rx /usr/local/bin/yt-dlp
-          fi
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+          sudo chmod a+rx /usr/local/bin/yt-dlp
 
       - name: 3. Download Videos
         run: |
@@ -50,8 +47,8 @@ jobs:
             CLEAN_URL=$(echo "$URL" | xargs)
             [ -z "$CLEAN_URL" ] && continue
             
-            # הוספת --no-restrict-filenames כדי לשמור על עברית וסימנים
-            COMMON_ARGS="$COOKIE_ARG --no-playlist --no-restrict-filenames --extractor-args youtube:player_client=android,web --js-runtimes node"
+            # הדגש: --no-restrict-filenames ושימוש בקידוד UTF-8
+            COMMON_ARGS="$COOKIE_ARG --no-playlist --no-restrict-filenames --windows-filenames --extractor-args youtube:player_client=android,web --js-runtimes node"
             
             if [ "$FORMAT" = "mp3" ]; then
               yt-dlp $COMMON_ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata -o "yt_output/%(title)s.%(ext)s" "$CLEAN_URL"
@@ -60,26 +57,34 @@ jobs:
             fi
           done < urls.txt
 
-      - name: 4. Process Output (Single or ZIP)
+      - name: 4. Process Output with Python (Hebrew Support)
         id: process_files
+        shell: python
         run: |
-          FILE_COUNT=$(ls -1 yt_output | wc -l)
-          
-          if [ "$FILE_COUNT" -gt 1 ]; then
-            zip -r -j "songs_collection.zip" yt_output/*
-            echo "FINAL_ARTIFACT=songs_collection.zip" >> $GITHUB_ENV
-          elif [ "$FILE_COUNT" -eq 1 ]; then
-            # לקיחת שם הקובץ בדיוק כפי שהוא (עם עברית)
-            FILENAME=$(ls -1 yt_output | head -n 1)
-            mv "yt_output/$FILENAME" .
-            
-            # שימוש בשיטת ה-EOF כדי להעביר שמות מורכבים למשתנה סביבה
-            echo "FINAL_ARTIFACT<<EOF" >> $GITHUB_ENV
-            echo "$FILENAME" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
-          else
-            exit 1
-          fi
+          import os
+          import shutil
+
+          source_dir = "yt_output"
+          files = os.listdir(source_dir)
+          print(f"Found {len(files)} files: {files}")
+
+          if len(files) == 0:
+              print("No files found!")
+              exit(1)
+
+          if len(files) > 1:
+              # אם יש כמה קבצים, נשתמש ב-ZIP (שמות בתוך הזיפ ישמרו בעברית)
+              os.system("zip -r -j 'songs_collection.zip' yt_output/*")
+              final_artifact = "songs_collection.zip"
+          else:
+              # קובץ יחיד - מעבירים אותו לתיקייה הראשית ושומרים על השם המקורי
+              filename = files[0]
+              shutil.move(os.path.join(source_dir, filename), filename)
+              final_artifact = filename
+
+          # כתיבה לתוך ה-GITHUB_ENV בצורה בטוחה לעברית
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
+              f.write(f"FINAL_ARTIFACT={final_artifact}\n")
 
       - name: 5. Create Release
         uses: ncipollo/release-action@v1
@@ -87,6 +92,6 @@ jobs:
           artifacts: "${{ env.FINAL_ARTIFACT }}"
           tag: "v${{ github.run_number }}"
           name: "הורדה מספר ${{ github.run_number }}"
-          body: "הקובץ: ${{ env.FINAL_ARTIFACT }}"
+          body: "הורדה מוכנה. שם הקובץ: ${{ env.FINAL_ARTIFACT }}"
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
