@@ -3,95 +3,100 @@ from github import Github
 from github import Auth
 import time
 
-st.set_page_config(page_title="YouTube Downloader", page_icon="🎵")
+# הגדרות דף
+st.set_page_config(page_title="YouTube Downloader", page_icon="🎵", layout="centered")
 
 st.title("🎵 Smart YouTube Downloader")
+st.write("הורד שירים ישירות ל-GitHub וקבל קישור להורדה")
 
 def get_github_client():
     if "GITHUB_TOKEN" not in st.secrets or "REPO_NAME" not in st.secrets:
-        st.error("Missing Secrets!")
+        st.error("שגיאה: חסרים Secrets (GITHUB_TOKEN / REPO_NAME)")
         return None, None
     auth = Auth.Token(st.secrets["GITHUB_TOKEN"])
     g = Github(auth=auth)
-    return g, g.get_repo(st.secrets["REPO_NAME"])
+    try:
+        repo = g.get_repo(st.secrets["REPO_NAME"])
+        return g, repo
+    except Exception as e:
+        st.error(f"לא הצלחתי להתחבר למאגר: {e}")
+        return None, None
 
-def download_ui():
+def run_downloader():
     g, repo = get_github_client()
-    if not repo: return
+    if not repo:
+        return
 
-    urls = st.text_area("הדבק קישורים (מופרדים בפסיקים או שורות חדשות):")
-    format_type = st.radio("פורמט:", ["mp3", "mp4"], horizontal=True)
+    # ממשק קלט
+    urls = st.text_area("הדבק קישורים מיוטיוב (מופרדים בפסיקים או שורות חדשות):", height=150)
+    format_type = st.radio("בחר פורמט:", ["mp3", "mp4"], horizontal=True)
 
-    if st.button("🚀 התחל הורדה"):
+    if st.button("🚀 התחל הורדה", use_container_width=True):
         if not urls:
-            st.warning("נא להזין קישורים.")
+            st.warning("בבקשה הזן לפחות קישור אחד.")
             return
 
-        clean_urls = ",".join([u.strip() for u in urls.replace("\n", ",").split(",") if u.strip()])
+        # ניקוי הקישורים
+        cleaned_urls = ",".join([u.strip() for u in urls.replace("\n", ",").split(",") if u.strip()])
         
         try:
             workflow = repo.get_workflow("download.yml")
             
-            # 1. הפעלת ה-Workflow
-            with st.status("שולח בקשה ל-GitHub...", expanded=True) as status:
-                workflow.create_dispatch(ref="main", inputs={"yt_urls": clean_urls, "format": format_type})
-                status.write("⏳ ממתין שההרצה תתחיל (זה לוקח כמה שניות)...")
+            with st.status("מתחיל תהליך...", expanded=True) as status:
+                # הפעלת ה-Workflow
+                status.write("📡 שולח פקודה ל-GitHub Actions...")
+                workflow.create_dispatch(ref="main", inputs={"yt_urls": cleaned_urls, "format": format_type})
                 
-                # 2. זיהוי מספר הריצה (Run Number)
-                # אנחנו מחפשים את הריצה הכי חדשה שנוצרה ב-30 שניות האחרונות
+                # חיפוש הריצה שהתחילה
                 run = None
-                for _ in range(10): # מנסה למצוא את הריצה במשך 20 שניות
+                for _ in range(15):  # ניסיונות למצוא את הריצה (30 שניות)
                     time.sleep(2)
                     runs = workflow.get_runs()
                     if runs.totalCount > 0:
                         latest_run = runs[0]
-                        # אם הריצה במצב 'queued' או 'in_progress', זו הריצה שלנו
                         if latest_run.status in ["queued", "in_progress"]:
                             run = latest_run
                             break
                 
                 if not run:
-                    status.update(label="❌ שגיאה: לא הצלחתי למצוא את הריצה ב-GitHub", state="error")
+                    status.update(label="❌ שגיאה: GitHub לא התחיל את הריצה בזמן.", state="error")
                     return
 
                 run_number = run.run_number
-                status.write(f"✅ זוהתה ריצה מספר: `{run_number}`")
-                status.write("📥 מוריד ומעבד את הסרטונים (זה עשוי לקחת 1-3 דקות)...")
+                status.write(f"✅ הריצה החלה! (מספר ריצה: `{run_number}`)")
+                status.write("⏳ מוריד ומעבד את הקבצים... זה לוקח כדקה או שתיים.")
 
-                # 3. מעקב אחרי סטטוס הריצה
+                # המתנה לסיום
                 while run.status != "completed":
                     time.sleep(5)
-                    run = repo.get_workflow_run(run.id) # רענון נתונים
+                    run = repo.get_workflow_run(run.id)
                 
                 if run.conclusion == "success":
-                    status.update(label="✅ ההורדה הושלמה!", state="complete")
+                    status.update(label="✅ התהליך הסתיים בהצלחה!", state="complete")
                     
-                    # 4. מציאת ה-Release והקובץ
-                    tag = f"v{run_number}"
-                    try:
-                        # מחכה שניה שה-Release יתעדכן בשרתים של GitHub
-                        time.sleep(2)
-                        release = repo.get_release(tag)
-                        assets = release.get_assets()
-                        
-                        if assets.totalCount > 0:
-                            asset = assets[0] # לוקח את הקובץ הראשון (השיר או ה-ZIP)
-                            download_url = asset.browser_download_url
-                            
-                            st.balloons()
-                            st.success(f"הקובץ מוכן: **{asset.name}**")
-                            
-                            # כפתור הורדה ישירה
-                            st.link_button(f"⬇️ הורד עכשיו: {asset.name}", download_url)
-                            st.info("אם ההורדה לא מתחילה, לחץ קליק ימני ושמור בשם.")
-                        else:
-                            st.error("הריצה הצליחה אבל לא נמצא קובץ להורדה.")
-                    except Exception:
-                        st.error(f"לא הצלחתי למצוא את ה-Release עם התגית {tag}.")
+                    # קבלת ה-Release והקובץ
+                    time.sleep(3) # זמן קצר לעדכון ה-API
+                    release = repo.get_release(f"v{run_number}")
+                    assets = release.get_assets()
+                    
+                    if assets.totalCount > 0:
+                        asset = assets[0]
+                        st.balloons()
+                        st.success(f"הקובץ מוכן: **{asset.name}**")
+                        st.link_button(f"⬇️ הורד עכשיו: {asset.name}", asset.browser_download_url)
+                    else:
+                        st.error("הריצה הצליחה אך לא נמצא קובץ ב-Release.")
                 else:
                     status.update(label=f"❌ הריצה נכשלה (סטטוס: {run.conclusion})", state="error")
 
         except Exception as e:
-            st.error(f"שגיאה כללית: {e}")
+            st.error(f"שגיאה בתקשורת עם GitHub: {e}")
 
-download_ui()
+run_downloader()
+
+# הצגת היסטוריית הורדות בציד (Sidebar)
+with st.sidebar:
+    st.title("הגדרות")
+    if "REPO_NAME" in st.secrets:
+        st.write(f"Repository: `{st.secrets['REPO_NAME']}`")
+    st.info("הקבצים נשמרים ב-Releases של המאגר שלך ב-GitHub.")
