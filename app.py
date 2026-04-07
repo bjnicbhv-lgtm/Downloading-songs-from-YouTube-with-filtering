@@ -5,7 +5,7 @@ import requests
 
 # הגדרות GitHub - מומלץ להשתמש ב-Secrets של Streamlit
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
-REPO_NAME = "your-username/your-repo-name" # שנה לשם המאגר שלך
+REPO_NAME = "Downloading-songs-from-YouTube-with-filtering" # שנה לשם המאגר שלך
 
 g = Github(GITHUB_TOKEN)
 repo = g.get_repo(REPO_NAME)
