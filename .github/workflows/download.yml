@@ -14,6 +14,10 @@ jobs:
   youtube_job:
     runs-on: ubuntu-latest
     permissions: write-all
+    env:
+      # הגדרת המערכת לתמיכה בעברית ותווים מיוחדים
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
     steps:
       - name: 1. Checkout code
         uses: actions/checkout@v4
@@ -40,14 +44,14 @@ jobs:
           fi
 
           FORMAT="${{ github.event.inputs.format }}"
-          # הפיכת פסיקים לשורות חדשות כדי לעבור עליהם בלולאה
           echo "${{ github.event.inputs.yt_urls }}" | tr ',' '\n' > urls.txt
 
           while IFS= read -r URL || [ -n "$URL" ]; do
             CLEAN_URL=$(echo "$URL" | xargs)
             [ -z "$CLEAN_URL" ] && continue
             
-            COMMON_ARGS="$COOKIE_ARG --no-playlist --extractor-args youtube:player_client=android,web --js-runtimes node"
+            # הוספת --no-restrict-filenames כדי לשמור על עברית וסימנים
+            COMMON_ARGS="$COOKIE_ARG --no-playlist --no-restrict-filenames --extractor-args youtube:player_client=android,web --js-runtimes node"
             
             if [ "$FORMAT" = "mp3" ]; then
               yt-dlp $COMMON_ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata -o "yt_output/%(title)s.%(ext)s" "$CLEAN_URL"
@@ -60,20 +64,20 @@ jobs:
         id: process_files
         run: |
           FILE_COUNT=$(ls -1 yt_output | wc -l)
-          echo "Found $FILE_COUNT files."
           
           if [ "$FILE_COUNT" -gt 1 ]; then
-            echo "Multiple files detected. Zipping..."
             zip -r -j "songs_collection.zip" yt_output/*
             echo "FINAL_ARTIFACT=songs_collection.zip" >> $GITHUB_ENV
           elif [ "$FILE_COUNT" -eq 1 ]; then
-            echo "Single file detected."
-            # חילוץ שם הקובץ המדויק כולל רווחים
+            # לקיחת שם הקובץ בדיוק כפי שהוא (עם עברית)
             FILENAME=$(ls -1 yt_output | head -n 1)
             mv "yt_output/$FILENAME" .
-            echo "FINAL_ARTIFACT=$FILENAME" >> $GITHUB_ENV
+            
+            # שימוש בשיטת ה-EOF כדי להעביר שמות מורכבים למשתנה סביבה
+            echo "FINAL_ARTIFACT<<EOF" >> $GITHUB_ENV
+            echo "$FILENAME" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
           else
-            echo "No files downloaded."
             exit 1
           fi
 
@@ -83,6 +87,6 @@ jobs:
           artifacts: "${{ env.FINAL_ARTIFACT }}"
           tag: "v${{ github.run_number }}"
           name: "הורדה מספר ${{ github.run_number }}"
-          body: "הקובץ מוכן להורדה משירות הסטרימליט."
+          body: "הקובץ: ${{ env.FINAL_ARTIFACT }}"
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
