@@ -1,63 +1,68 @@
 import streamlit as st
 from github import Github
 from github import Auth
-import time
 
-st.set_page_config(page_title="YouTube Downloader via GitHub", page_icon="🎵")
+# הגדרות דף
+st.set_page_config(page_title="YouTube Downloader", page_icon="📥", layout="centered")
 
-st.title("🎵 YouTube Downloader (GitHub Actions)")
+st.title("🎵 YouTube Downloader (via GitHub Actions)")
 
-# פונקציית התחברות
-def get_repo():
+def run_github_action(urls, format_type):
     try:
+        # בדיקת Secrets
         if "GITHUB_TOKEN" not in st.secrets or "REPO_NAME" not in st.secrets:
-            st.error("שגיאה: המפתחות GITHUB_TOKEN או REPO_NAME אינם מוגדרים ב-Secrets.")
-            return None
+            st.error("שגיאה: הגדרות ה-Secrets (TOKEN/REPO_NAME) חסרות ב-Streamlit.")
+            return
 
+        # התחברות ל-GitHub
         auth = Auth.Token(st.secrets["GITHUB_TOKEN"])
         g = Github(auth=auth)
-        return g.get_repo(st.secrets["REPO_NAME"])
+        repo = g.get_repo(st.secrets["REPO_NAME"])
+
+        # קריאה לקובץ ה-Workflow הספציפי שלך
+        workflow = repo.get_workflow("download.yml")
+        
+        # הפעלת ה-Workflow עם הקלטים
+        workflow.create_dispatch(
+            ref="main",  # וודא שה-Branch הראשי שלך אכן נקרא main
+            inputs={
+                "yt_urls": urls,
+                "format": format_type
+            }
+        )
+        return True
     except Exception as e:
-        st.error(f"שגיאת התחברות: {e}")
-        return None
+        st.error(f"אירעה שגיאה: {e}")
+        return False
 
-repo = get_repo()
+# ממשק משתמש
+st.subheader("הכנס קישורים להורדה")
+urls_input = st.text_area("הדבק קישורים מיוטיוב (מופרדים בפסיקים או שורות חדשות):", height=150)
+format_choice = st.selectbox("בחר פורמט:", ["mp3", "mp4"])
 
-if repo:
-    st.success(f"מחובר למאגר: {repo.full_name}")
-    
-    # ממשק המשתמש
-    urls = st.text_area("הדבק קישורים מיוטיוב (מופרדים בפסיקים או בשורות חדשות):", placeholder="https://youtube.com/watch?v=..., https://youtube.com/watch?v=...")
-    format_type = st.radio("בחר פורמט:", ("mp3", "mp4"))
-    
-    if st.button("🚀 התחל הורדה"):
-        if not urls:
-            st.warning("נא להזין לפחות קישור אחד.")
-        else:
-            try:
-                # ניקוי הקישורים (הפיכת שורות חדשות לפסיקים)
-                clean_urls = ",".join([url.strip() for url in urls.split("\n") if url.strip()])
-                
-                # מציאת ה-Workflow לפי שם הקובץ (ודא ששם הקובץ ב-GitHub הוא download.yml או שנה כאן)
-                # אפשר גם לפי השם שכתוב בתוך ה-YAML: "Smart Download: Single MP3 or ZIP"
-                workflow = repo.get_workflow("main.yml") # <--- שנה את זה לשם קובץ ה-YAML שלך ב-GitHub!
-                
-                # הפעלת ה-Workflow
-                workflow.create_dispatch(
-                    ref="main", # או ה-Branch שבו נמצא הקוד
-                    inputs={
-                        "yt_urls": clean_urls,
-                        "format": format_type
-                    }
-                )
-                
+if st.button("🚀 התחל הורדה"):
+    if not urls_input:
+        st.warning("נא להזין קישורים.")
+    else:
+        # ניקוי הקישורים והפיכתם למחרוזת אחת מופרדת בפסיקים
+        cleaned_urls = ",".join([u.strip() for u in urls_input.replace("\n", ",").split(",") if u.strip()])
+        
+        with st.spinner("שולח בקשה ל-GitHub..."):
+            success = run_github_action(cleaned_urls, format_choice)
+            
+            if success:
                 st.balloons()
-                st.success("✅ הפעולה נשלחה בהצלחה ל-GitHub Actions!")
-                st.info("התהליך לוקח כ-1-3 דקות. בסיום, הקובץ יופיע בטאב ה-Releases במאגר שלך.")
+                st.success("✅ הפעולה נשלחה בהצלחה!")
+                st.info("ההורדה מתבצעת כעת בשרתי GitHub. התהליך לוקח 1-3 דקות.")
                 
-                # קישור ישיר ל-Releases
-                st.markdown(f"[לחץ כאן לצפייה בתוצאות במאגר](https://github.com/{st.secrets['REPO_NAME']}/releases)")
-                
-            except Exception as e:
-                st.error(f"אירעה שגיאה בהפעלת ה-Workflow: {e}")
-                st.info("טיפ: וודא ששם קובץ ה-YAML בקוד תואם לשם ב-GitHub (למשל main.yml).")
+                # קישור מהיר לדף ה-Releases שבו יופיע הקובץ
+                repo_url = st.secrets["REPO_NAME"]
+                st.markdown(f"### [🔗 לחץ כאן למעבר להורדת הקבצים](https://github.com/{repo_url}/releases)")
+                st.write("הקובץ החדש יופיע בראש הרשימה ברגע שהתהליך יסתיים.")
+
+# הצגת סטטוס חיבור בסיסי ב-Sidebar
+with st.sidebar:
+    st.write("---")
+    if "REPO_NAME" in st.secrets:
+        st.write(f"Connected to: `{st.secrets['REPO_NAME']}`")
+        st.write(f"Workflow file: `download.yml`")
