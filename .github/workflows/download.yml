@@ -40,6 +40,7 @@ jobs:
           fi
 
           FORMAT="${{ github.event.inputs.format }}"
+          # הפיכת פסיקים לשורות חדשות כדי לעבור עליהם בלולאה
           echo "${{ github.event.inputs.yt_urls }}" | tr ',' '\n' > urls.txt
 
           while IFS= read -r URL || [ -n "$URL" ]; do
@@ -67,10 +68,10 @@ jobs:
             echo "FINAL_ARTIFACT=songs_collection.zip" >> $GITHUB_ENV
           elif [ "$FILE_COUNT" -eq 1 ]; then
             echo "Single file detected."
-            mv yt_output/* .
-            # מקבל את שם הקובץ היחיד שהועבר
-            SINGLE_FILE=$(ls -1 | grep -E '\.(mp3|mp4)$' | head -n 1)
-            echo "FINAL_ARTIFACT=$SINGLE_FILE" >> $GITHUB_ENV
+            # חילוץ שם הקובץ המדויק כולל רווחים
+            FILENAME=$(ls -1 yt_output | head -n 1)
+            mv "yt_output/$FILENAME" .
+            echo "FINAL_ARTIFACT=$FILENAME" >> $GITHUB_ENV
           else
             echo "No files downloaded."
             exit 1
@@ -82,5 +83,6 @@ jobs:
           artifacts: "${{ env.FINAL_ARTIFACT }}"
           tag: "v${{ github.run_number }}"
           name: "הורדה מספר ${{ github.run_number }}"
-          body: "הקובץ מוכן. סוג הקובץ: ${{ env.FINAL_ARTIFACT }}"
+          body: "הקובץ מוכן להורדה משירות הסטרימליט."
           token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
