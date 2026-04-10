@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     env:
-      # הגדרות שפה גלובליות לכל ה-Job
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
       PYTHONIOENCODING: utf-8
@@ -29,60 +28,98 @@ jobs:
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
 
-      - name: 3. Download Videos
+      - name: 3. Download Videos with Strict Filtering
+        shell: python
         run: |
-          mkdir -p yt_output
-          
-          if [ -n "${{ secrets.YT_COOKIES }}" ]; then
-            echo "${{ secrets.YT_COOKIES }}" > cookies.txt
-            COOKIE_ARG="--cookies cookies.txt"
-          else
-            COOKIE_ARG=""
-          fi
+          import os
+          import subprocess
 
-          FORMAT="${{ github.event.inputs.format }}"
-          echo "${{ github.event.inputs.yt_urls }}" | tr ',' '\n' > urls.txt
+          # --- רשימת חסימה: איברי מין, תוכן בוטה ושמות זמרות ---
+          BLACKLIST = [
+              # --- איברי מין וסלנג בוטה (עברית) ---
+              "זין", "זיין", "שמוק", "כוס", "פות", "פותה", "דגדגן", "פין", "ביצים", "אשכים", "שק אשכים", 
+              "פטמות", "פטמה", "שדיים", "ציצי", "תחת", "ישבן", "פי הטבעת", "אנאלי", "רקטום", "וגינה", 
+              "שפיכה", "גמירה", "מציצה", "אוננות", "חדירה", "זרע", "פורנו", "סקס", "זנות", "זונה", 
+              "זונות", "פרוצה", "עירום", "ערות", "חשפנות", "ביקיני", "חזיה", "תחתונים", "לנז'רי",
 
-          while IFS= read -r URL || [ -n "$URL" ]; do
-            CLEAN_URL=$(echo "$URL" | xargs)
-            [ -z "$CLEAN_URL" ] && continue
-            
-            # הדגש: --no-restrict-filenames ושימוש בקידוד UTF-8
-            COMMON_ARGS="$COOKIE_ARG --no-playlist --no-restrict-filenames --windows-filenames --extractor-args youtube:player_client=android,web --js-runtimes node"
-            
-            if [ "$FORMAT" = "mp3" ]; then
-              yt-dlp $COMMON_ARGS -x --audio-format mp3 --embed-thumbnail --add-metadata -o "yt_output/%(title)s.%(ext)s" "$CLEAN_URL"
-            else
-              yt-dlp $COMMON_ARGS -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 --embed-thumbnail --add-metadata -o "yt_output/%(title)s.%(ext)s" "$CLEAN_URL"
-            fi
-          done < urls.txt
+              # --- איברי מין וסלנג בוטה (אנגלית) ---
+              "dick", "cock", "pussy", "vagina", "clit", "clitoris", "penis", "balls", "testicles", 
+              "scrotum", "anus", "anal", "rectum", "tits", "boobs", "nipples", "ass", "butt", "cum", 
+              "ejaculation", "blowjob", "handjob", "porn", "sexy", "nude", "naked", "xxx", "sex",
 
-      - name: 4. Process Output with Python (Hebrew Support)
+              # --- רשימת זמרות (שמות ספציפיים בלבד) ---
+              "נועה קירל", "עדן בן זקן", "אנה זק", "אגם בוחבוט", "אודיה", "יסמין מועלם", "שרית חדד", 
+              "מירי מסיקה", "קרן פלס", "נטע ברזילי", "ריטה", "נינט טייב", "נינט", "שירי מימון", 
+              "עדן גולן", "אלה לי", "נרקיס", "מארינה מקסימיליאן", "יובל דיין", "רוני דלומי", 
+              "שירה מרגלית", "עדי ביטי", "אילנית", "חוה אלברשטיין", "יהודית רביץ", "גלי עטרי", 
+              "קורין אלאל", "עפרה חזה", "ירדנה ארזי", "מאיה בוסקילה", "דין דין אביב", "ריקי גל", 
+              "נורית גלרון", "אתי אנקרי", "מיקה משה", "איה כורם", "אפרת גוש", "דנה אינטרנשיונל", 
+              "מור", "ואלרי חמאתי", "שי-לי עטרי", "שני יצהרי", "ענבל ביבי", "לינה מחול", "תמר יהלומי", 
+              "אילנה אביטל", "זהבה בן", "מרגלית צנעני", "אביבה אבידן", "ליאת בנאי", "מורן מזור", 
+              "רוני דואני", "איגי וקסמן", "אלונה דניאל", "סי היימן", "רונה קינן", "דניאלה ספקטור", 
+              "מיקה קרני", "שרון חזיז", "לאה שבת", "דנה ברגר", "שירה גבריאלוב", "ג'יין בורדו", 
+              "נונו", "Nunu", "אודליה", "שחר טבוך", "מיכל אמדורסקי", "שפיטה", "חנה לסלאו", 
+              "ציפי שביט", "מיקי קם", "ענת עצמון", "לימור שפירא", "שרון רוטר", "אנה שפיץ", 
+              "מעיין בוקריס", "קרולינה", "ריף כהן", "דקלה", "שלומית אהרון", "לינט", "נסיה",
+              "Taylor Swift", "Beyonce", "Rihanna", "Adele", "Billie Eilish", "Ariana Grande", 
+              "Dua Lipa", "Katy Perry", "Lady Gaga", "Selena Gomez", "Miley Cyrus", "Sia", 
+              "Lana Del Rey", "Shakira", "Jennifer Lopez", "Britney Spears", "Madonna", 
+              "Nicki Minaj", "Cardi B", "Demi Lovato", "Olivia Rodrigo", "Mariah Carey"
+          ]
+
+          urls = "${{ github.event.inputs.yt_urls }}".split(',')
+          format_type = "${{ github.event.inputs.format }}"
+          os.makedirs("yt_output", exist_ok=True)
+
+          for url in urls:
+              url = url.strip()
+              if not url: continue
+              try:
+                  # שליפת כותרת הסרטון בקידוד בטוח
+                  title = subprocess.check_output(["yt-dlp", "--get-title", url]).decode('utf-8', 'ignore').strip()
+                  lower_title = title.lower()
+                  
+                  # חיפוש מילה אסורה
+                  found_word = None
+                  for word in BLACKLIST:
+                      if word.lower() in lower_title:
+                          found_word = word
+                          break
+                  
+                  if found_word:
+                      print(f"❌ חסימה! הסרטון '{title}' לא ירד בגלל המילה האסורה: '{found_word}'")
+                      continue
+
+                  print(f"✅ מאושר להורדה: {title}")
+                  common_args = ["yt-dlp", "--no-playlist", "--no-restrict-filenames", "--windows-filenames", "-o", f"yt_output/%(title)s.%(ext)s"]
+                  
+                  if format_type == "mp3":
+                      cmd = common_args + ["-x", "--audio-format", "mp3", "--embed-thumbnail", "--add-metadata", url]
+                  else:
+                      cmd = common_args + ["-f", "bestvideo+bestaudio/best", "--merge-output-format", "mp4", "--embed-thumbnail", "--add-metadata", url]
+                  
+                  subprocess.run(cmd)
+              except Exception as e:
+                  print(f"שגיאה בעיבוד הקישור {url}: {e}")
+
+      - name: 4. Process Output with Python
         id: process_files
         shell: python
         run: |
           import os
           import shutil
-
           source_dir = "yt_output"
           files = os.listdir(source_dir)
-          print(f"Found {len(files)} files: {files}")
-
           if len(files) == 0:
-              print("No files found!")
+              print("No files to process (all might have been filtered).")
               exit(1)
-
           if len(files) > 1:
-              # אם יש כמה קבצים, נשתמש ב-ZIP (שמות בתוך הזיפ ישמרו בעברית)
               os.system("zip -r -j 'songs_collection.zip' yt_output/*")
               final_artifact = "songs_collection.zip"
           else:
-              # קובץ יחיד - מעבירים אותו לתיקייה הראשית ושומרים על השם המקורי
               filename = files[0]
               shutil.move(os.path.join(source_dir, filename), filename)
               final_artifact = filename
-
-          # כתיבה לתוך ה-GITHUB_ENV בצורה בטוחה לעברית
           with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
               f.write(f"FINAL_ARTIFACT={final_artifact}\n")
 
@@ -92,6 +129,6 @@ jobs:
           artifacts: "${{ env.FINAL_ARTIFACT }}"
           tag: "v${{ github.run_number }}"
           name: "הורדה מספר ${{ github.run_number }}"
-          body: "הורדה מוכנה. שם הקובץ: ${{ env.FINAL_ARTIFACT }}"
+          body: "הורדה מוכנה. סינון מילים ואיברי מין פעיל."
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
