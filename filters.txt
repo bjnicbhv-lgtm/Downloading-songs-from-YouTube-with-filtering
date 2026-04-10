@@ -1,1 +1,291 @@
-הראל טל
+# --- זמרות ישראליות ---
+נועה קירל
+Noa Kirel
+עדן בן זקן
+Eden Ben Zaken
+אודיה
+Odia
+אנה זק
+Anna Zak
+אגם בוחבוט
+Agam Buhbut
+יסמין מועלם
+Yasmin Moallem
+נסרין קדרי
+Nasrin Kadri
+שרית חדד
+Sarit Hadad
+נינט טייב
+Ninet Tayeb
+שירי מימון
+Shiri Maimon
+מירי מסיקה
+Miri Mesika
+קרן פלס
+Keren Peles
+נטע ברזילי
+Netta Barzilai
+ואלרי חמאתי
+Valerie Hamaty
+שירה מרגלית
+Shira Margalit
+ענבל ביבי
+Inbal Bibi
+נרקיס
+Narkis
+אוהד שרגאי
+ריטה
+Rita
+גלי עטרי
+Gali Atari
+ירדנה ארזי
+Yardena Arazi
+עפרה חזה
+Ofra Haza
+חוה אלברשטיין
+Chava Alberstein
+רוני דלומי
+Roni Dalumi
+דיקלה
+Dikla
+זהבה בן
+Zehava Ben
+אתי אנקרי
+Etti Ankri
+קורין אלאל
+Corinne Allal
+יהודית רביץ
+Yehudit Ravitz
+נורית גלרון
+Nurit Galron
+דנה אינטרנשיונל
+Dana International
+רוני סופרסטאר
+Roni Superstar
+מאיה בוסקילה
+Maya Buskila
+אביבית בר זוהר
+שפיטה
+Shefita
+שרון חזיז
+Sharon Haziz
+איגי וקסמן
+Iggy Waxman
+סי היימן
+Si Heiman
+לאה שבת
+Lea Shabbat
+אילנית
+Ilanit
+שושנה דמארי
+Shoshana Damari
+יפה ירקוני
+Yafa Yarkoni
+רונה קינן
+Rona Kenan
+דנה ברגר
+Dana Berger
+מיקה קרני
+Mika Karni
+אפרת גוש
+Efrat Gosh
+מרינה מקסימיליאן
+Marina Maximilian
+איה כורם
+Aya Korem
+אניה בוקשטיין
+Ania Bukstein
+לירז צ'רכי
+Liraz Charhi
+שי המבר
+Shay Hamber
+גל דה פז
+Gal De Paz
+ג'יין בורדו
+Jane Bordeaux
+כרקוקלי
+Carcukli
+נס וסטילה
+Ness and Stilla
+נס
+Ness
+אקו
+Echo
+
+# --- זמרות בינלאומיות ---
+Taylor Swift
+טיילור סוויפט
+Beyonce
+ביונסה
+Ariana Grande
+אריאנה גרנדה
+Rihanna
+ריהאנה
+Billie Eilish
+בילי אייליש
+Dua Lipa
+דואה ליפה
+Adele
+אדל
+Lady Gaga
+ליידי גאגא
+Katy Perry
+קייטי פרי
+Selena Gomez
+סלינה גומז
+Miley Cyrus
+מיילי סיירוס
+Demi Lovato
+דמי לובאטו
+Sia
+סיא
+Shakira
+שאקירה
+Jennifer Lopez
+ג'ניפר לופז
+Madonna
+מדונה
+Britney Spears
+בריטני ספירס
+Christina Aguilera
+כריסטינה אגילרה
+Mariah Carey
+מריה קארי
+Whitney Houston
+ויטני יוסטון
+Celine Dion
+סלין דיון
+Lana Del Rey
+לנה דל ריי
+Olivia Rodrigo
+אוליביה רודריגו
+Doja Cat
+דוג'ה קאט
+SZA
+סיזה
+Nicki Minaj
+ניקי מינאז'
+Cardi B
+קארדי בי
+Megan Thee Stallion
+מגאן די סטליון
+Camila Cabello
+קמילה קביו
+Halsey
+הלסי
+Lorde
+לורד
+Pink
+פינק
+Avril Lavigne
+אבריל לאבין
+Amy Winehouse
+איימי ויינהאוס
+Bebe Rexha
+ביבי רקסה
+Zara Larsson
+זארה לארסון
+Rita Ora
+ריטה אורה
+Ellie Goulding
+אלי גולדינג
+Tove Lo
+טוב לו
+Charli XCX
+צ'ארלי אקס סי אקס
+Rosalia
+רוסליה
+Karol G
+קארול ג'י
+Anitta
+אניטה
+Kesha
+קשה
+Cher
+שר
+Tina Turner
+טינה טרנר
+Aretha Franklin
+אריתה פרנקלין
+Dolly Parton
+דולי פרטון
+Shania Twain
+שאנייה טוויין
+Alanis Morissette
+אלאניס מוריסט
+Bjork
+ביורק
+Florence Welch
+פלורנס וולש
+Lizzo
+ליזו
+Normani
+נורמני
+Tinashe
+טינאשה
+Alessia Cara
+אלסיה קארה
+Hailee Steinfeld
+היילי סטיינפלד
+Sabrina Carpenter
+סברינה קרפנטר
+Madison Beer
+מדיסון ביר
+Tate McRae
+טייט מקריי
+Kim Petras
+קים פטרס
+Becky G
+בקי ג'י
+Nelly Furtado
+נלי פורטדו
+Fergie
+פרגי
+Gwen Stefani
+גוון סטפאני
+Kylie Minogue
+קיילי מינוג
+Lulu
+לולו
+Bjork
+ביורק
+Jorja Smith
+ג'ורג'ה סמית'
+H.E.R.
+הר
+Summer Walker
+סאמר ווקר
+Kehlani
+קהלני
+Jhene Aiko
+ג'נה אייקו
+Willow Smith
+ווילו סמית'
+Noah Cyrus
+נואה סיירוס
+Carly Rae Jepsen
+קארלי ריי ג'פסן
+Meghan Trainor
+מייגן טריינור
+Kelly Clarkson
+קלי קלארקסון
+Ashlee Simpson
+אשלי סימפסון
+Jessica Simpson
+ג'סיקה סימפסון
+Lindsay Lohan
+לינדזי לוהן
+Hilary Duff
+הילארי דאף
+Vanessa Hudgens
+ונסה הדג'נס
+Ashley Tisdale
+אשלי טיסדייל
+Zendaya
+זנדאיה
+Bella Thorne
+בלה ת'ורן
+Dove Cameron
+דאב קמרון
+Sofia Carson
+סופיה קרסון
