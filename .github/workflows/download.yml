@@ -18,6 +18,7 @@ jobs:
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
       PYTHONIOENCODING: utf-8
+      YT_COOKIES: ${{ secrets.YT_COOKIES }} # העברת העוגיות לקוד
     steps:
       - name: 1. Checkout code
         uses: actions/checkout@v4
@@ -28,11 +29,20 @@ jobs:
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
 
-      - name: 3. Download Videos with Strict Filtering
+      - name: 3. Download Videos with Strict Filtering & Cookies
         shell: python
         run: |
           import os
           import subprocess
+
+          # יצירת קובץ עוגיות אם הוא קיים ב-Secrets
+          cookies_content = os.getenv("YT_COOKIES")
+          use_cookies = False
+          if cookies_content and len(cookies_content) > 10:
+              with open("cookies.txt", "w") as f:
+                  f.write(cookies_content)
+              use_cookies = True
+              print("✅ משתמש ב-Cookies כדי לעקוף חסימה.")
 
           # --- רשימת חסימה: איברי מין, תוכן בוטה ושמות זמרות ---
           BLACKLIST = [
@@ -67,6 +77,7 @@ jobs:
               "Nicki Minaj", "Cardi B", "Demi Lovato", "Olivia Rodrigo", "Mariah Carey"
           ]
 
+
           urls = "${{ github.event.inputs.yt_urls }}".split(',')
           format_type = "${{ github.event.inputs.format }}"
           os.makedirs("yt_output", exist_ok=True)
@@ -75,60 +86,17 @@ jobs:
               url = url.strip()
               if not url: continue
               try:
-                  # שליפת כותרת הסרטון בקידוד בטוח
-                  title = subprocess.check_output(["yt-dlp", "--get-title", url]).decode('utf-8', 'ignore').strip()
+                  # הגדרות בסיסיות ל-yt-dlp
+                  base_cmd = ["yt-dlp", "--no-playlist", "--extractor-args", "youtube:player_client=android,web"]
+                  if use_cookies:
+                      base_cmd += ["--cookies", "cookies.txt"]
+
+                  # שליפת כותרת
+                  title = subprocess.check_output(base_cmd + ["--get-title", url]).decode('utf-8', 'ignore').strip()
                   lower_title = title.lower()
                   
-                  # חיפוש מילה אסורה
-                  found_word = None
-                  for word in BLACKLIST:
-                      if word.lower() in lower_title:
-                          found_word = word
-                          break
+                  # בדיקת חסימה
+                  found_word = next((word for word in BLACKLIST if word.lower() in lower_title), None)
                   
                   if found_word:
-                      print(f"❌ חסימה! הסרטון '{title}' לא ירד בגלל המילה האסורה: '{found_word}'")
-                      continue
-
-                  print(f"✅ מאושר להורדה: {title}")
-                  common_args = ["yt-dlp", "--no-playlist", "--no-restrict-filenames", "--windows-filenames", "-o", f"yt_output/%(title)s.%(ext)s"]
-                  
-                  if format_type == "mp3":
-                      cmd = common_args + ["-x", "--audio-format", "mp3", "--embed-thumbnail", "--add-metadata", url]
-                  else:
-                      cmd = common_args + ["-f", "bestvideo+bestaudio/best", "--merge-output-format", "mp4", "--embed-thumbnail", "--add-metadata", url]
-                  
-                  subprocess.run(cmd)
-              except Exception as e:
-                  print(f"שגיאה בעיבוד הקישור {url}: {e}")
-
-      - name: 4. Process Output with Python
-        id: process_files
-        shell: python
-        run: |
-          import os
-          import shutil
-          source_dir = "yt_output"
-          files = os.listdir(source_dir)
-          if len(files) == 0:
-              print("No files to process (all might have been filtered).")
-              exit(1)
-          if len(files) > 1:
-              os.system("zip -r -j 'songs_collection.zip' yt_output/*")
-              final_artifact = "songs_collection.zip"
-          else:
-              filename = files[0]
-              shutil.move(os.path.join(source_dir, filename), filename)
-              final_artifact = filename
-          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
-              f.write(f"FINAL_ARTIFACT={final_artifact}\n")
-
-      - name: 5. Create Release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "${{ env.FINAL_ARTIFACT }}"
-          tag: "v${{ github.run_number }}"
-          name: "הורדה מספר ${{ github.run_number }}"
-          body: "הורדה מוכנה. סינון מילים ואיברי מין פעיל."
-          token: ${{ secrets.GITHUB_TOKEN }}
-          allowUpdates: true
+                      print(f"❌ חסימה! הסרטון '{title}' לא ירד בגלל המילה האסורה: '{fou
